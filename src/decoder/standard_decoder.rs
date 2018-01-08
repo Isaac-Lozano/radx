@@ -12,7 +12,6 @@ struct LoopReadInfo {
     begin_byte: usize,
     begin_sample: usize,
     end_sample: usize,
-    samples_read: usize,
 }
 
 pub struct StandardDecoder<S> {
@@ -24,6 +23,8 @@ pub struct StandardDecoder<S> {
     prev_prev_sample: Sample,
     coeff1: i32,
     coeff2: i32,
+    alignment_samples: u32,
+    current_sample: u32,
     loop_info: Option<LoopReadInfo>,
 }
 
@@ -35,20 +36,30 @@ impl<S> StandardDecoder<S>
         let prev_sample = iter::repeat(0).take(header.channel_count as usize).collect();
         let prev_prev_sample = iter::repeat(0).take(header.channel_count as usize).collect();
 
+        let alignment_samples;
         let loop_info = if looping {
             match header.version {
                 AdxVersion::Version3(Some(loop_info)) => {
+                    alignment_samples = loop_info.alignment_samples as u32;
                     Some(LoopReadInfo {
                         begin_byte: loop_info.begin_byte as usize,
                         begin_sample: loop_info.begin_sample as usize,
                         end_sample: loop_info.end_sample as usize,
-                        samples_read: 0,
                     })
                 }
-                _ => None,
+                _ => {
+                    alignment_samples = 0;
+                    None
+                }
             }
         }
         else {
+            match header.version {
+                AdxVersion::Version3(Some(loop_info)) =>
+                    alignment_samples = loop_info.alignment_samples as u32,
+                _ =>
+                    alignment_samples = 0,
+            }
             None
         };
 
@@ -61,6 +72,8 @@ impl<S> StandardDecoder<S>
             prev_prev_sample: prev_prev_sample,
             coeff1: coeff1,
             coeff2: coeff2,
+            alignment_samples: alignment_samples,
+            current_sample: 0,
             loop_info: loop_info,
         }
     }
@@ -111,6 +124,14 @@ impl<S> StandardDecoder<S>
                 samples[sample_idx][channel] = sample;
             }
         }
+
+        // Take account of alignment samples
+        if self.alignment_samples != 0 {
+            self.sample_vec_idx = self.alignment_samples as usize;
+            self.current_sample = self.alignment_samples;
+            self.alignment_samples = 0;
+        }
+
         Ok(Some(samples))
     }
 }
@@ -127,7 +148,7 @@ impl<S> Decoder for StandardDecoder<S>
     }
 
     fn loop_info(&self) -> Option<LoopInfo> {
-		match self.header.version {
+        match self.header.version {
             AdxVersion::Version3(Some(loop_info)) => {
                 Some(LoopInfo {
                     start_sample: loop_info.begin_sample,
@@ -140,14 +161,14 @@ impl<S> Decoder for StandardDecoder<S>
 
     fn next_sample(&mut self) -> Option<Sample> {
         if let Some(ref mut loop_info) = self.loop_info {
-            if loop_info.samples_read == loop_info.end_sample {
+            if self.current_sample as usize == loop_info.end_sample {
                 self.inner.seek(SeekFrom::Start(loop_info.begin_byte as u64)).unwrap();
                 // Signal a reload of samples.
                 self.sample_vec_idx = self.samples.len();
-                loop_info.samples_read = loop_info.begin_sample;
+                self.current_sample = loop_info.begin_sample as u32;
             }
-            loop_info.samples_read += 1;
         }
+
         if self.sample_vec_idx == self.samples.len() {
             self.samples = match self.read_frame().unwrap_or(None) {
                 Some(v) => v,
@@ -155,9 +176,16 @@ impl<S> Decoder for StandardDecoder<S>
             };
             self.sample_vec_idx = 0;
         }
-        let result = self.samples[self.sample_vec_idx].clone();
-        self.sample_vec_idx += 1;
-        Some(result)
+
+        if self.current_sample == self.header.total_samples {
+            None
+        }
+        else {
+            let result = self.samples[self.sample_vec_idx].clone();
+            self.sample_vec_idx += 1;
+            self.current_sample += 1;
+            Some(result)
+        }
     }
 }
 
