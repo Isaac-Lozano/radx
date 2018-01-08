@@ -85,7 +85,7 @@ pub struct AdxHeader {
 }
 
 impl AdxHeader {
-    pub(crate) fn read_header<S>(inner: &mut S) -> io::Result<AdxHeader>
+    pub fn read_header<S>(mut inner: S) -> io::Result<AdxHeader>
         where S: Read + Seek
     {
         let magic = inner.read_u16()?;
@@ -158,7 +158,7 @@ impl AdxHeader {
         })
     }
 
-    pub(crate) fn to_writer<W>(&self, mut writer: W, header_size: usize) -> io::Result<()>
+    pub fn to_writer<W>(&self, mut writer: W, header_size: usize) -> io::Result<()>
         where W: Write
     {
         writer.write_u16(ADX_MAGIC)?;

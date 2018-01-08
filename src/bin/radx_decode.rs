@@ -5,8 +5,10 @@ extern crate hound;
 
 use std::env;
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{Read, Seek, BufReader, BufWriter};
 use std::process;
+
+use radx::adx_header::AdxHeader;
 
 use getopts::Options;
 
@@ -20,7 +22,8 @@ fn main() {
     // Create options
     let mut opts = Options::new();
     opts.optopt("l", "loop", "Loop N times", "N");
-    opts.optflag("h", "help", "print this help menu");
+    opts.optflag("i", "info", "Print adx header info");
+    opts.optflag("h", "help", "Print this help menu");
 
     // Parse options
     let matches = match opts.parse(&options) {
@@ -56,8 +59,11 @@ fn main() {
         .opt_str("l")
         .and_then(|start_str| { start_str.parse::<u32>().ok() });
 
-    // Open adx file and make reader
+    // Open adx file and make reader/print header
     let adx_file = BufReader::new(File::open(filename).unwrap_or_else(|_| barf("Could not open adx file.")));
+	if matches.opt_present("i") {
+		print_info(adx_file);
+	}
     let mut adx = radx::from_reader(adx_file, loops_opt.is_some()).unwrap_or_else(|_| barf("Could not make adx reader."));
 
     // Print adx info
@@ -121,4 +127,12 @@ fn help(prog_name: &str, opts: Options) -> ! {
     let brief = format!("Usage: {} [options] INPUT [OUTPUT]", prog_name);
     print!("{}", opts.usage(&brief));
     process::exit(0);
+}
+
+fn print_info<R>(reader: R) -> !
+    where R: Read + Seek
+{
+    let header = AdxHeader::read_header(reader).unwrap_or_else(|_| barf("Could not read adx header."));
+	println!("{:#?}", header);
+	process::exit(0);
 }
