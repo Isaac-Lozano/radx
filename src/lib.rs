@@ -31,7 +31,6 @@ pub fn from_reader<R>(mut reader: R, looping: bool) -> io::Result<Box<Decoder>>
     where R: Seek + Read + 'static
 {
     let header = AdxHeader::read_header(&mut reader)?;
-    println!("{:#?}", header);
     match header.encoding {
         AdxEncoding::Standard =>
             Ok(Box::new(StandardDecoder::from_header(header, reader, looping))),

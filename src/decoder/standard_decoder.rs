@@ -6,9 +6,9 @@ use std::iter;
 use adx_header::{AdxHeader, AdxVersion};
 use adx_reader::AdxReader;
 use decoder::Decoder;
-use ::{Sample, gen_coeffs};
+use ::{Sample, LoopInfo, gen_coeffs};
 
-struct LoopInfo {
+struct LoopReadInfo {
     begin_byte: usize,
     begin_sample: usize,
     end_sample: usize,
@@ -24,7 +24,7 @@ pub struct StandardDecoder<S> {
     prev_prev_sample: Sample,
     coeff1: i32,
     coeff2: i32,
-    loop_info: Option<LoopInfo>,
+    loop_info: Option<LoopReadInfo>,
 }
 
 impl<S> StandardDecoder<S>
@@ -37,17 +37,15 @@ impl<S> StandardDecoder<S>
 
         let loop_info = if looping {
             match header.version {
-                AdxVersion::Version3(loop_opt) => {
-                    loop_opt.map(|loop_info|
-                        LoopInfo {
-                            begin_byte: loop_info.begin_byte as usize,
-                            begin_sample: loop_info.begin_sample as usize,
-                            end_sample: loop_info.end_sample as usize,
-                            samples_read: 0,
-                        }
-                    )
+                AdxVersion::Version3(Some(loop_info)) => {
+                    Some(LoopReadInfo {
+                        begin_byte: loop_info.begin_byte as usize,
+                        begin_sample: loop_info.begin_sample as usize,
+                        end_sample: loop_info.end_sample as usize,
+                        samples_read: 0,
+                    })
                 }
-                _ => None
+                _ => None,
             }
         }
         else {
@@ -126,6 +124,18 @@ impl<S> Decoder for StandardDecoder<S>
 
     fn sample_rate(&self) -> u32 {
         self.header.sample_rate as u32
+    }
+
+    fn loop_info(&self) -> Option<LoopInfo> {
+		match self.header.version {
+            AdxVersion::Version3(Some(loop_info)) => {
+                Some(LoopInfo {
+                    start_sample: loop_info.begin_sample,
+                    end_sample: loop_info.end_sample,
+                })
+            }
+            _ => None,
+        }
     }
 
     fn next_sample(&mut self) -> Option<Sample> {
