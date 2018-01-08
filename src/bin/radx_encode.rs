@@ -25,7 +25,7 @@ fn main() {
     opts.optopt("s", "start", "Loop start sample (defaults to song start)", "START");
     opts.optopt("e", "end", "Loop end sample (defaults to song end)", "END");
     opts.optflag("n", "no-loop", "Don't loop the song");
-    opts.optflag("h", "help", "print this help menu");
+    opts.optflag("h", "help", "Print this help menu");
 
     // Parse options
     let matches = match opts.parse(&options) {
