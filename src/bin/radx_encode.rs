@@ -111,6 +111,7 @@ fn barf(message: &str) -> ! {
 
 fn help(prog_name: &str, opts: Options) -> ! {
     let brief = format!("Usage: {} [options] INPUT [OUTPUT]", prog_name);
+	println!("radx_encode {}", env!("CARGO_PKG_VERSION"));
     print!("{}", opts.usage(&brief));
     process::exit(0);
 }
