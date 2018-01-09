@@ -151,8 +151,8 @@ impl<S> Decoder for StandardDecoder<S>
         match self.header.version {
             AdxVersion::Version3(Some(loop_info)) => {
                 Some(LoopInfo {
-                    start_sample: loop_info.begin_sample,
-                    end_sample: loop_info.end_sample,
+                    start_sample: loop_info.begin_sample - loop_info.alignment_samples as u32,
+                    end_sample: loop_info.end_sample - loop_info.alignment_samples as u32,
                 })
             }
             _ => None,
