@@ -6,8 +6,7 @@ An ADX encoder/decoder written in Rust.
 Usage
 -----
 
-**radx_encode**
-radx_encode takes a wav file and encodes it into an adx file.
+**radx_encode** takes a wav file and encodes it into an adx file.
 ```
 radx_encode [options] INPUT [OUTPUT]
 
@@ -18,8 +17,7 @@ Options:
     -h, --help          Print this help menu
 ```
 
-**radx_decode**
-radx_decode takes an adx file and decodes it into a wav file.
+**radx_decode** takes an adx file and decodes it into a wav file.
 ```
 radx_decode [options] INPUT [OUTPUT]
 
