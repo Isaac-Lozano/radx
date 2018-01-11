@@ -1,4 +1,6 @@
 extern crate byteorder;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod adx_header;
 mod adx_reader;
@@ -10,7 +12,7 @@ use std::io::{self, Read, Seek};
 use std::f64;
 
 use adx_header::{AdxHeader, AdxEncoding};
-use decoder::{Decoder, StandardDecoder};
+use decoder::{Decoder, StandardDecoder, AhxDecoder};
 
 #[derive(Clone,Copy,Debug)]
 pub struct LoopInfo {
@@ -34,6 +36,8 @@ pub fn from_reader<R>(mut reader: R, looping: bool) -> io::Result<Box<Decoder>>
     match header.encoding {
         AdxEncoding::Standard =>
             Ok(Box::new(StandardDecoder::from_header(header, reader, looping))),
+        AdxEncoding::Ahx =>
+            Ok(Box::new(AhxDecoder::from_header(header, reader))),
         _ => unimplemented!(),
     }
 }

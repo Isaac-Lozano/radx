@@ -1,6 +1,8 @@
 pub mod standard_decoder;
+pub mod ahx_decoder;
 
 pub(crate) use self::standard_decoder::StandardDecoder;
+pub(crate) use self::ahx_decoder::AhxDecoder;
 
 use ::{Sample, LoopInfo};
 
