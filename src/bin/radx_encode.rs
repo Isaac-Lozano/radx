@@ -10,6 +10,7 @@ use std::process;
 
 use radx::{AdxSpec, LoopInfo};
 use radx::encoder::standard_encoder::StandardEncoder;
+use radx::encoder::ahx_encoder::AhxEncoder;
 
 use getopts::Options;
 
@@ -25,6 +26,7 @@ fn main() {
     opts.optopt("s", "start", "Loop start sample (defaults to song start)", "START");
     opts.optopt("e", "end", "Loop end sample (defaults to song end)", "END");
     opts.optflag("n", "no-loop", "Don't loop the song");
+    opts.optflag("a", "ahx", "Use ahx encoding (cannot loop)");
     opts.optflag("h", "help", "Print this help menu");
 
     // Parse options
@@ -70,38 +72,58 @@ fn main() {
     let input = BufReader::new(File::open(filename).unwrap_or_else(|_| barf("Could not open input file.")));
     let output = BufWriter::new(File::create(&output_filename).unwrap_or_else(|_| barf("Could not open output file.")));
 
-    // Read samples
-    println!("Reading Samples.");
-    let (samples, sample_rate) = read_samples(input).unwrap_or_else(|_| barf("Could not read samples from input."));
+    // Change based on encoding
+    if matches.opt_present("a") {
+        // Read samples
+        println!("Reading Samples.");
+        let (samples, sample_rate) = read_samples_ahx(input).unwrap_or_else(|_| barf("Could not read samples from input."));
 
-    // Make adx spec
-    let spec = if matches.opt_present("n") {
-        AdxSpec {
-            channels: 2,
-            sample_rate: sample_rate,
-            loop_info: None,
+        if sample_rate != 22050 {
+            barf("ahx encoding requires a sample rate of 22050.");
         }
+
+        // Make encoder
+        let mut encoder = AhxEncoder::new(output).unwrap_or_else(|_| barf("Could not make encoder."));
+
+        // Encode data
+        println!("Encoding data.");
+        encoder.encode_data(samples).unwrap_or_else(|_| barf("Could not encode data."));
+        encoder.finalize().unwrap_or_else(|_| barf("Could not finish writing adx file."));
     }
     else {
-        AdxSpec {
-            channels: 2,
-            sample_rate: sample_rate,
-            loop_info: Some(
-                LoopInfo {
-                    start_sample: start_sample,
-                    end_sample: end_sample_opt.unwrap_or(samples.len() as u32),
-                }
-            )
+        // Read samples
+        println!("Reading Samples.");
+        let (samples, sample_rate) = read_samples(input).unwrap_or_else(|_| barf("Could not read samples from input."));
+
+        // Make adx spec
+        let spec = if matches.opt_present("n") {
+            AdxSpec {
+                channels: 2,
+                sample_rate: sample_rate,
+                loop_info: None,
+            }
         }
-    };
+        else {
+            AdxSpec {
+                channels: 2,
+                sample_rate: sample_rate,
+                loop_info: Some(
+                    LoopInfo {
+                        start_sample: start_sample,
+                        end_sample: end_sample_opt.unwrap_or(samples.len() as u32),
+                    }
+                )
+            }
+        };
 
-    // Make encoder from spec
-    let mut encoder = StandardEncoder::new(output, spec).unwrap_or_else(|_| barf("Could not make encoder"));
+        // Make encoder from spec
+        let mut encoder = StandardEncoder::new(output, spec).unwrap_or_else(|_| barf("Could not make encoder."));
 
-    // Encode data
-    println!("Encoding data.");
-    encoder.encode_data(samples).unwrap_or_else(|_| barf("Could not encode data."));
-    encoder.finish().unwrap_or_else(|_| barf("Could not finish writing adx file."));
+        // Encode data
+        println!("Encoding data.");
+        encoder.encode_data(samples).unwrap_or_else(|_| barf("Could not encode data."));
+        encoder.finish().unwrap_or_else(|_| barf("Could not finish writing adx file."));
+    }
 }
 
 fn barf(message: &str) -> ! {
@@ -147,5 +169,19 @@ fn read_samples<R>(reader: R) -> WavResult<(Vec<Vec<i16>>, u32)>
     }
     else {
         Err(WavError::Unsupported)
+    }
+}
+
+fn read_samples_ahx<R>(reader: R) -> WavResult<(Vec<i16>, u32)>
+    where R: Read
+{
+    let mut reader = WavReader::new(reader)?;
+    let spec = reader.spec();
+    if spec.channels == 1 {
+        let samples: WavResult<_> = reader.samples::<i16>().collect();
+        Ok((samples?, spec.sample_rate))
+    }
+    else {
+        barf("ahx encoding requires 1 channel (mono)");
     }
 }
