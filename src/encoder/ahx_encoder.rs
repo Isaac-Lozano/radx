@@ -185,6 +185,53 @@ const ISF_TABLE: [i64; 63] = [
     0x00CAE5D85F1BBD,
 ];
 
+#[derive(Clone,Copy,Debug)]
+struct GroupSpec {
+    nlevels: i32,
+    group_bits: u32,
+}
+
+#[derive(Clone,Copy,Debug)]
+struct QuantSpec {
+    a: i64,
+    b: i64,
+    num_bits: u32,
+    group_spec: Option<GroupSpec>,
+}
+
+const QUANT_TABLE: [QuantSpec; 30] = [
+    QuantSpec{ a: 0x0F800000, b: -0x00800000, num_bits: 5, group_spec: None, },
+    QuantSpec{ a: 0x0F800000, b: -0x00800000, num_bits: 5, group_spec: None, },
+    QuantSpec{ a: 0x0F800000, b: -0x00800000, num_bits: 5, group_spec: None, },
+    QuantSpec{ a: 0x0F800000, b: -0x00800000, num_bits: 5, group_spec: None, },
+    QuantSpec{ a: 0x0F000000, b: -0x01000000, num_bits: 4, group_spec: None, },
+    QuantSpec{ a: 0x0F000000, b: -0x01000000, num_bits: 4, group_spec: None, },
+    QuantSpec{ a: 0x09000000, b: -0x07000000, num_bits: 4, group_spec: Some(GroupSpec{ nlevels: 9, group_bits: 10, }), },
+    QuantSpec{ a: 0x09000000, b: -0x07000000, num_bits: 4, group_spec: Some(GroupSpec{ nlevels: 9, group_bits: 10, }), },
+    QuantSpec{ a: 0x09000000, b: -0x07000000, num_bits: 4, group_spec: Some(GroupSpec{ nlevels: 9, group_bits: 10, }), },
+    QuantSpec{ a: 0x09000000, b: -0x07000000, num_bits: 4, group_spec: Some(GroupSpec{ nlevels: 9, group_bits: 10, }), },
+    QuantSpec{ a: 0x09000000, b: -0x07000000, num_bits: 4, group_spec: Some(GroupSpec{ nlevels: 9, group_bits: 10, }), },
+    QuantSpec{ a: 0x09000000, b: -0x07000000, num_bits: 4, group_spec: Some(GroupSpec{ nlevels: 9, group_bits: 10, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+    QuantSpec{ a: 0x0C000000, b: -0x04000000, num_bits: 2, group_spec: Some(GroupSpec{ nlevels: 3, group_bits: 5, }), },
+];
+
 struct Window {
     window: [i16; 512],
     window_idx: usize,
@@ -314,15 +361,19 @@ impl<S> AhxEncoder<S>
         // Write frame header
         self.inner.write(0xFFF5E0C0, 32)?;
 
-        // Write bit allocations for highest quality
+        // Write bit allocations
         for _ in 0..4 {
-            self.inner.write(15, 4)?;
+            self.inner.write(6, 4)?;
         }
-        for _ in 0..7 {
-            self.inner.write(7, 3)?;
+        for _ in 0..2 {
+            self.inner.write(4, 3)?;
         }
-        for _ in 0..19 {
-            self.inner.write(3, 2)?;
+        for _ in 0..5 {
+            self.inner.write(3, 3)?;
+        }
+        self.inner.write(3, 2)?;
+        for _ in 0..18 {
+            self.inner.write(1, 2)?;
         }
 
         // Write scfsi info
@@ -387,46 +438,26 @@ impl<S> AhxEncoder<S>
         for part in 0..3 {
             for gr in 0..4 {
                 for sb in 0..30 {
-                    let mut is_group = false;
-                    let a;
-                    let b;
-                    let num_bits;
-
-                    if sb < 4 {
-                        a = 0x0FFFC000;
-                        b = -0x00004000;
-                        num_bits = 14;
-                    }
-                    else if sb < 11 {
-                        a = 0x0FE00000;
-                        b = -0x00200000;
-                        num_bits = 7;
-                    }
-                    else {
-                        a = 0x09000000;
-                        b = -0x07000000;
-                        num_bits = 4;
-                        is_group = true;
-                    }
+                    let quant = QUANT_TABLE[sb];
 
                     let mut quantized_samples = [0; 3];
                     for s in 0..3 {
                         let scaled = (polyphased_samples[part][gr][sb][s] * ISF_TABLE[scalefactors[part][sb]]) >> 28;
-                        let transformed = ((scaled * a) >> 28) + b;
-                        let quantized = transformed >> (28 - (num_bits - 1));
-                        let formatted = quantized ^ (1 << (num_bits - 1));
+                        let transformed = ((scaled * quant.a) >> 28) + quant.b;
+                        let quantized = transformed >> (28 - (quant.num_bits - 1));
+                        let formatted = (quantized & ((1 << quant.num_bits) - 1)) ^ (1 << (quant.num_bits - 1));
                         quantized_samples[s] = formatted;
                     }
 
-                    if is_group {
+                    if let Some(group_spec) = quant.group_spec {
                         let grouped = quantized_samples[0] +
-                            quantized_samples[1] * 9 +
-                            quantized_samples[2] * 9 * 9;
-                        self.inner.write(grouped as u32, 10)?;
+                            quantized_samples[1] * group_spec.nlevels as i64 +
+                            quantized_samples[2] * group_spec.nlevels as i64 * group_spec.nlevels as i64;
+                        self.inner.write(grouped as u32, group_spec.group_bits)?;
                     }
                     else {
                         for s in 0..3 {
-                            self.inner.write(quantized_samples[s] as u32, num_bits)?;
+                            self.inner.write(quantized_samples[s] as u32, quant.num_bits)?;
                         }
                     }
                 }
