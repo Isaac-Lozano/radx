@@ -14,6 +14,7 @@ Options:
     -s, --start START   Loop start sample (defaults to song start)
     -e, --end END       Loop end sample (defaults to song end)
     -n, --no-loop       Don't loop the song
+    -a, --ahx           Use ahx encoding (cannot loop)
     -h, --help          Print this help menu
 ```
 
