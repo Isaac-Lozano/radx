@@ -256,15 +256,22 @@ impl Window {
 
     fn polyphase(&self) -> [i64; 32] {
         let mut polyphased = [0; 32];
-        for sb in 0..32 {
-            let mut sum = 0;
-            for i in 0..64 {
-                for j in 0..8 {
-                    sum += (((N[i][sb] * ENWINDOW[i + 64 * j]) >> 28) * self[i + 64 * j] as i64) >> 15;
-                }
-            }
 
-            polyphased[sb] = sum;
+        // Precompute Y since it doesn't rely on subband
+        let mut y = [0; 64];
+        for i in 0..64 {
+            for j in 0..8 {
+                // Window the sample
+                // (15b * 28b) >> 15 = 28b
+                y[i] += (self[i + 64 * j] as i64 * ENWINDOW[i + 64 * j]) >> 15;
+            }
+        }
+
+        // Now do polyphase filter
+        for sb in 0..32 {
+            for i in 0..64 {
+                polyphased[sb] += (N[i][sb] * y[i]) >> 28;
+            }
         }
 
         polyphased
