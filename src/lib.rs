@@ -7,12 +7,14 @@ mod adx_reader;
 mod adx_writer;
 pub mod decoder;
 pub mod encoder;
+pub mod error;
 
-use std::io::{self, Read, Seek};
+use std::io::{Read, Seek};
 use std::f64;
 
 use adx_header::{AdxHeader, AdxEncoding};
 use decoder::{Decoder, StandardDecoder, AhxDecoder};
+use error::RadxResult;
 
 #[derive(Clone,Copy,Debug)]
 pub struct LoopInfo {
@@ -29,7 +31,7 @@ pub struct AdxSpec {
 
 type Sample = Vec<i16>;
 
-pub fn from_reader<R>(mut reader: R, looping: bool) -> io::Result<Box<Decoder>>
+pub fn from_reader<R>(mut reader: R, looping: bool) -> RadxResult<Box<Decoder>>
     where R: Seek + Read + 'static
 {
     let header = AdxHeader::read_header(&mut reader)?;

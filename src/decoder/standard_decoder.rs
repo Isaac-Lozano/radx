@@ -1,12 +1,13 @@
 use std::cmp;
 use std::i16;
-use std::io::{self, Seek, Read, SeekFrom};
+use std::io::{Seek, Read, SeekFrom};
 use std::iter;
 
 use adx_header::{AdxHeader, AdxVersion};
 use adx_reader::AdxReader;
 use decoder::Decoder;
-use ::{Sample, LoopInfo, gen_coeffs};
+use error::RadxResult;
+use {Sample, LoopInfo, gen_coeffs};
 
 struct LoopReadInfo {
     begin_byte: usize,
@@ -78,7 +79,7 @@ impl<S> StandardDecoder<S>
         }
     }
 
-    fn read_frame(&mut self) -> io::Result<Option<Vec<Sample>>> {
+    fn read_frame(&mut self) -> RadxResult<Option<Vec<Sample>>> {
         let mut bitreader = BitReader::new(&mut self.inner);
         let samples_per_block = ((self.header.block_size as u32 - 2) * 8) / self.header.sample_bitdepth as u32;
         let mut samples: Vec<Sample> = iter::repeat(iter::repeat(0).take(self.header.channel_count as usize).collect())
@@ -220,7 +221,7 @@ impl<R> BitReader<R>
         result as u32
     }
 
-    fn read(&mut self, mut bits: u32) -> io::Result<u32> {
+    fn read(&mut self, mut bits: u32) -> RadxResult<u32> {
         assert!(bits <= 32);
 
         let mut result = 0;

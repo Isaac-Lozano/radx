@@ -1,7 +1,8 @@
-use std::io::{self, Write, Seek, SeekFrom};
+use std::io::{Write, Seek, SeekFrom};
 use std::ops::Index;
 
 use adx_header::{AdxHeader, AdxEncoding, AdxVersion};
+use error::RadxResult;
 
 lazy_static! {
     static ref N: [[i64; 32]; 64] = {
@@ -309,7 +310,7 @@ impl<W> BitWriter<W>
         }
     }
 
-    fn write_bit(&mut self, bit: u32) -> io::Result<()> {
+    fn write_bit(&mut self, bit: u32) -> RadxResult<()> {
         if self.bit == 8 {
             let buf = [self.byte];
             self.inner.write_all(&buf)?;
@@ -322,7 +323,7 @@ impl<W> BitWriter<W>
         Ok(())
     }
 
-    fn write(&mut self, num: u32, mut bits: u32) -> io::Result<()> {
+    fn write(&mut self, num: u32, mut bits: u32) -> RadxResult<()> {
         while bits > 0 {
             bits -= 1;
             self.write_bit((num >> bits) & 1)?;
@@ -331,7 +332,7 @@ impl<W> BitWriter<W>
         Ok(())
     }
 
-    fn inner(mut self) -> io::Result<W> {
+    fn inner(mut self) -> RadxResult<W> {
         if self.bit != 0 {
             let buf = [self.byte];
             self.inner.write_all(&buf)?;
@@ -351,7 +352,7 @@ pub struct AhxEncoder<S> {
 impl<S> AhxEncoder<S>
     where S: Write + Seek
 {
-    pub fn new(mut inner: S) -> io::Result<AhxEncoder<S>> {
+    pub fn new(mut inner: S) -> RadxResult<AhxEncoder<S>> {
         inner.seek(SeekFrom::Start(0x24))?;
         Ok(AhxEncoder {
             inner: BitWriter::new(inner),
@@ -362,7 +363,7 @@ impl<S> AhxEncoder<S>
         })
     }
 
-    fn encode_frame(&mut self) -> io::Result<()> {
+    fn encode_frame(&mut self) -> RadxResult<()> {
         self.inner.reset();
 
         // Write frame header
@@ -474,7 +475,7 @@ impl<S> AhxEncoder<S>
         Ok(())
     }
 
-    pub fn encode_data<I>(&mut self, samples: I) -> io::Result<()>
+    pub fn encode_data<I>(&mut self, samples: I) -> RadxResult<()>
         where I: IntoIterator<Item = i16>
     {
         for sample in samples {
@@ -491,7 +492,7 @@ impl<S> AhxEncoder<S>
         Ok(())
     }
 
-    pub fn finalize(mut self) -> io::Result<()> {
+    pub fn finalize(mut self) -> RadxResult<()> {
         if self.buffer_idx != 0 {
             for idx in self.buffer_idx..1152 {
                 self.buffer[idx] = 0;

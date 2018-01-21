@@ -3,6 +3,7 @@ extern crate radx;
 extern crate getopts;
 extern crate hound;
 
+use std::error::Error;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Seek, BufReader, BufWriter};
@@ -26,10 +27,7 @@ fn main() {
     opts.optflag("h", "help", "Print this help menu");
 
     // Parse options
-    let matches = match opts.parse(&options) {
-        Ok(matches) => matches,
-        Err(err) => { barf(&err.to_string()) }
-    };
+    let matches = unwrap_or_barf(opts.parse(&options), "Could not parse options");
 
     // Print help message if we have to
     if matches.opt_present("h") {
@@ -60,11 +58,11 @@ fn main() {
         .and_then(|start_str| { start_str.parse::<u32>().ok() });
 
     // Open adx file and make reader/print header
-    let adx_file = BufReader::new(File::open(filename).unwrap_or_else(|_| barf("Could not open adx file.")));
+    let adx_file = BufReader::new(unwrap_or_barf(File::open(filename), "Could not open adx file."));
 	if matches.opt_present("i") {
 		print_info(adx_file);
 	}
-    let mut adx = radx::from_reader(adx_file, loops_opt.is_some()).unwrap_or_else(|_| barf("Could not make adx reader."));
+    let mut adx = unwrap_or_barf(radx::from_reader(adx_file, loops_opt.is_some()), "Could not make adx reader.");
 
     // Print adx info
     println!("ADX info:");
@@ -87,8 +85,8 @@ fn main() {
     };
 
     // Open wav writer
-    let wav_file = BufWriter::new(File::create(output_filename).unwrap_or_else(|_| barf("Could not open output file.")));
-    let mut wav_writer = WavWriter::new(wav_file, spec).unwrap_or_else(|_| barf("Could not make wav writer."));
+    let wav_file = BufWriter::new(unwrap_or_barf(File::create(output_filename), "Could not open output file."));
+    let mut wav_writer = unwrap_or_barf(WavWriter::new(wav_file, spec), "Could not make wav writer.");
 
     // Read depending on number of loops
     println!("Decoding and writing wav.");
@@ -98,7 +96,7 @@ fn main() {
             for _ in 0..samples_to_read {
                 let sample = adx.next_sample().unwrap();
                 for channel_sample in sample {
-                    wav_writer.write_sample(channel_sample).unwrap_or_else(|_| barf("Problem writing wav samples."));
+                    unwrap_or_barf(wav_writer.write_sample(channel_sample), "Problem writing wav samples.");
                 }
             }
         }
@@ -109,18 +107,27 @@ fn main() {
     else {
         for sample in adx {
             for channel_sample in sample {
-                wav_writer.write_sample(channel_sample).unwrap_or_else(|_| barf("Problem writing wav samples."));
+                unwrap_or_barf(wav_writer.write_sample(channel_sample), "Problem writing wav samples.");
             }
         }
     };
 
     // Finish writing to the wav
-    wav_writer.finalize().unwrap_or_else(|_| barf("Could not finalize writing wav file."));
+    unwrap_or_barf(wav_writer.finalize(), "Could not finalize writing wav file.");
 }
 
 fn barf(message: &str) -> ! {
     println!("Error: {}", message);
     process::exit(1);
+}
+
+fn unwrap_or_barf<T, E>(result: Result<T, E>, err_desc: &str) -> T
+    where E: Error
+{
+    result.unwrap_or_else(|err| {
+        let err_string = format!("{}: {}", err_desc, err);
+        barf(&err_string);
+    })
 }
 
 fn help(prog_name: &str, opts: Options) -> ! {
@@ -133,7 +140,7 @@ fn help(prog_name: &str, opts: Options) -> ! {
 fn print_info<R>(reader: R) -> !
     where R: Read + Seek
 {
-    let header = AdxHeader::read_header(reader).unwrap_or_else(|_| barf("Could not read adx header."));
+    let header = unwrap_or_barf(AdxHeader::read_header(reader), "Could not read adx header.");
 	println!("{:#?}", header);
 	process::exit(0);
 }

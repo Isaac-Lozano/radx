@@ -1,7 +1,8 @@
-use std::io::{self, Read, Write, Seek, SeekFrom};
+use std::io::{Read, Write, Seek, SeekFrom};
 
 use adx_reader::AdxReader;
 use adx_writer::AdxWriter;
+use error::{RadxResult, RadxError};
 
 const ADX_MAGIC: u16 = 0x8000;
 // TODO: Make function to pub this
@@ -48,13 +49,13 @@ pub enum AdxEncoding {
 }
 
 impl AdxEncoding {
-    fn from_u8(val: u8) -> AdxEncoding {
+    fn from_u8(val: u8) -> RadxResult<AdxEncoding> {
         match val {
-            0x02 => AdxEncoding::Preset,
-            0x03 => AdxEncoding::Standard,
-            0x04 => AdxEncoding::Exponential,
-            0x10 | 0x11 => AdxEncoding::Ahx,
-            _ => panic!("Bad encoding"),
+            0x02 => Ok(AdxEncoding::Preset),
+            0x03 => Ok(AdxEncoding::Standard),
+            0x04 => Ok(AdxEncoding::Exponential),
+            0x10 | 0x11 => Ok(AdxEncoding::Ahx),
+            _ => Err(RadxError::BadAdxHeader("bad encoding value")),
         }
     }
 }
@@ -85,16 +86,16 @@ pub struct AdxHeader {
 }
 
 impl AdxHeader {
-    pub fn read_header<S>(mut inner: S) -> io::Result<AdxHeader>
+    pub fn read_header<S>(mut inner: S) -> RadxResult<AdxHeader>
         where S: Read + Seek
     {
         let magic = inner.read_u16()?;
         if magic != ADX_MAGIC {
-            panic!("Bad magic");
+            return Err(RadxError::BadAdxHeader("bad adx magic value"));
         }
 
         let data_offset = inner.read_u16()?;
-        let encoding = AdxEncoding::from_u8(inner.read_u8()?);
+        let encoding = AdxEncoding::from_u8(inner.read_u8()?)?;
         let block_size = inner.read_u8()?;
         let sample_bitdepth = inner.read_u8()?;
         let channel_count = inner.read_u8()?;
@@ -133,7 +134,7 @@ impl AdxHeader {
             0x04 => AdxVersion::Version4,
             0x05 => AdxVersion::Version5,
             0x06 => AdxVersion::Version6,
-            _ => panic!("Bad version"),
+            _ => return Err(RadxError::BadAdxHeader("bad adx version value")),
         };
 
         inner.seek(SeekFrom::Start(data_offset as u64 - 2))?;
@@ -141,7 +142,7 @@ impl AdxHeader {
         let mut copyright_buffer = [0u8; 6];
         inner.read_exact(&mut copyright_buffer)?;
         if &copyright_buffer != b"(c)CRI" {
-            panic!("Copyright magic wrong");
+            return Err(RadxError::BadAdxHeader("bad copyright string"));
         }
 
         Ok(AdxHeader {
@@ -158,7 +159,7 @@ impl AdxHeader {
         })
     }
 
-    pub fn to_writer<W>(&self, mut writer: W, header_size: usize) -> io::Result<()>
+    pub fn to_writer<W>(&self, mut writer: W, header_size: usize) -> RadxResult<()>
         where W: Write
     {
         writer.write_u16(ADX_MAGIC)?;

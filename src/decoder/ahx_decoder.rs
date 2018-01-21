@@ -1,10 +1,11 @@
 use adx_header::AdxHeader;
 use decoder::Decoder;
-use ::{Sample, LoopInfo};
+use error::{RadxResult, RadxError};
+use {Sample, LoopInfo};
 
 use std::cmp;
 use std::i16;
-use std::io::{self, Read};
+use std::io::Read;
 use std::num::Wrapping;
 
 const FRAC_BITS: u32 = 28;
@@ -233,7 +234,7 @@ impl<R> AhxDecoder<R>
         }
     }
 
-    fn read_frame(&mut self) -> io::Result<Option<[i16; 1152]>> {
+    fn read_frame(&mut self) -> RadxResult<Option<[i16; 1152]>> {
         self.inner.reset();
         // let _sync = self.inner.read(11)?;
         // let _version = self.inner.read(2)?;
@@ -254,7 +255,7 @@ impl<R> AhxDecoder<R>
             return Ok(None);
         }
         else if frame_header != 0xfff5e0c0 {
-            return Err(io::Error::new(io::ErrorKind::Other, "Incorrect file format."));
+            return Err(RadxError::BadAhxFrameHeader);
         }
 
         let mut allocations = [0; 30];
@@ -373,7 +374,7 @@ impl<R> AhxDecoder<R>
         Ok(Some(pcm))
     }
 
-    fn read_samples(&mut self, quant: QuantizeSpec) -> io::Result<[i64; 3]> {
+    fn read_samples(&mut self, quant: QuantizeSpec) -> RadxResult<[i64; 3]> {
         let mut samples = [0; 3];
         let num_bits;
 
@@ -470,7 +471,7 @@ impl<R> BitReader<R>
         result as u32
     }
 
-    pub fn read(&mut self, mut bits: u32) -> io::Result<u32> {
+    pub fn read(&mut self, mut bits: u32) -> RadxResult<u32> {
         assert!(bits <= 32);
 
         let mut result = 0;

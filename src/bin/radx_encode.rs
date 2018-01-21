@@ -3,6 +3,7 @@ extern crate radx;
 extern crate getopts;
 extern crate hound;
 
+use std::error::Error;
 use std::env;
 use std::io::{Read, BufReader, BufWriter};
 use std::fs::File;
@@ -30,10 +31,7 @@ fn main() {
     opts.optflag("h", "help", "Print this help menu");
 
     // Parse options
-    let matches = match opts.parse(&options) {
-        Ok(matches) => matches,
-        Err(err) => { barf(&err.to_string()) }
-    };
+    let matches = unwrap_or_barf(opts.parse(&options), "Could not parse options");
 
     // Print help message if we have to
     if matches.opt_present("h") {
@@ -69,31 +67,31 @@ fn main() {
         });
 
     // Open input and output files
-    let input = BufReader::new(File::open(filename).unwrap_or_else(|_| barf("Could not open input file.")));
-    let output = BufWriter::new(File::create(&output_filename).unwrap_or_else(|_| barf("Could not open output file.")));
+    let input = BufReader::new(unwrap_or_barf(File::open(filename), "Could not open input file."));
+    let output = BufWriter::new(unwrap_or_barf(File::create(&output_filename), "Could not open output file."));
 
     // Change based on encoding
     if matches.opt_present("a") {
         // Read samples
         println!("Reading Samples.");
-        let (samples, sample_rate) = read_samples_ahx(input).unwrap_or_else(|_| barf("Could not read samples from input."));
+        let (samples, sample_rate) = unwrap_or_barf(read_samples_ahx(input), "Could not read samples from input.");
 
         if sample_rate != 22050 {
             barf("ahx encoding requires a sample rate of 22050.");
         }
 
         // Make encoder
-        let mut encoder = AhxEncoder::new(output).unwrap_or_else(|_| barf("Could not make encoder."));
+        let mut encoder = unwrap_or_barf(AhxEncoder::new(output), "Could not make encoder.");
 
         // Encode data
         println!("Encoding data.");
-        encoder.encode_data(samples).unwrap_or_else(|_| barf("Could not encode data."));
-        encoder.finalize().unwrap_or_else(|_| barf("Could not finish writing adx file."));
+        unwrap_or_barf(encoder.encode_data(samples), "Could not encode data.");
+        unwrap_or_barf(encoder.finalize(), "Could not finish writing adx file.");
     }
     else {
         // Read samples
         println!("Reading Samples.");
-        let (samples, sample_rate) = read_samples(input).unwrap_or_else(|_| barf("Could not read samples from input."));
+        let (samples, sample_rate) = unwrap_or_barf(read_samples(input), "Could not read samples from input.");
 
         // Make adx spec
         let spec = if matches.opt_present("n") {
@@ -117,18 +115,27 @@ fn main() {
         };
 
         // Make encoder from spec
-        let mut encoder = StandardEncoder::new(output, spec).unwrap_or_else(|_| barf("Could not make encoder."));
+        let mut encoder = unwrap_or_barf(StandardEncoder::new(output, spec), "Could not make encoder.");
 
         // Encode data
         println!("Encoding data.");
-        encoder.encode_data(samples).unwrap_or_else(|_| barf("Could not encode data."));
-        encoder.finish().unwrap_or_else(|_| barf("Could not finish writing adx file."));
+        unwrap_or_barf(encoder.encode_data(samples), "Could not encode data.");
+        unwrap_or_barf(encoder.finish(), "Could not finish writing adx file.");
     }
 }
 
 fn barf(message: &str) -> ! {
     println!("Error: {}", message);
     process::exit(1);
+}
+
+fn unwrap_or_barf<T, E>(result: Result<T, E>, err_desc: &str) -> T
+    where E: Error
+{
+    result.unwrap_or_else(|err| {
+        let err_string = format!("{}: {}", err_desc, err);
+        barf(&err_string);
+    })
 }
 
 fn help(prog_name: &str, opts: Options) -> ! {

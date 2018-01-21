@@ -1,10 +1,11 @@
-use std::io::{self, Write, Seek, SeekFrom};
+use std::io::{Write, Seek, SeekFrom};
 use std::iter;
 use std::i16;
 
 use {Sample, AdxSpec, gen_coeffs};
 use adx_header::{AdxHeader, AdxEncoding, AdxVersion, AdxVersion3LoopInfo, ADX_HEADER_LEN};
 use adx_writer::AdxWriter;
+use error::RadxResult;
 
 const HIGHPASS_FREQ: u32 = 0x01F4;
 
@@ -77,7 +78,7 @@ impl Block {
         self.size == 32
     }
 
-    fn to_writer<W>(&mut self, mut writer: W, coeffs: (i32, i32)) -> io::Result<()>
+    fn to_writer<W>(&mut self, mut writer: W, coeffs: (i32, i32)) -> RadxResult<()>
         where W: Write
     {
         if self.min == 0 && self.max == 0 {
@@ -184,7 +185,7 @@ impl Frame {
         self.blocks[0].is_full()
     }
 
-    fn to_writer<W>(&mut self, mut writer: W, coeffs: (i32, i32)) -> io::Result<()>
+    fn to_writer<W>(&mut self, mut writer: W, coeffs: (i32, i32)) -> RadxResult<()>
         where W: Write
     {
         for block in self.blocks.iter_mut() {
@@ -208,7 +209,7 @@ pub struct StandardEncoder<W> {
 impl<W> StandardEncoder<W>
     where W: Write + Seek
 {
-    pub fn new(mut writer: W, mut spec: AdxSpec) -> io::Result<StandardEncoder<W>> {
+    pub fn new(mut writer: W, mut spec: AdxSpec) -> RadxResult<StandardEncoder<W>> {
         let alignment_samples = spec.loop_info
             .as_mut()
             .map(|li| {
@@ -249,7 +250,7 @@ impl<W> StandardEncoder<W>
         Ok(encoder)
     }
 
-    pub fn encode_data<I>(&mut self, samples: I) -> io::Result<()>
+    pub fn encode_data<I>(&mut self, samples: I) -> RadxResult<()>
         where I: IntoIterator<Item = Sample>
     {
         for sample in samples {
@@ -264,7 +265,7 @@ impl<W> StandardEncoder<W>
         Ok(())
     }
 
-    pub fn finish(mut self) -> io::Result<()> {
+    pub fn finish(mut self) -> RadxResult<()> {
 		if !self.current_frame.is_empty() {
 			self.current_frame.to_writer(&mut self.inner, self.coeffs)?;
 		}
