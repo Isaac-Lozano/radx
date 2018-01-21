@@ -67,31 +67,31 @@ fn main() {
         });
 
     // Open input and output files
-    let input = BufReader::new(unwrap_or_barf(File::open(filename), "Could not open input file."));
-    let output = BufWriter::new(unwrap_or_barf(File::create(&output_filename), "Could not open output file."));
+    let input = BufReader::new(unwrap_or_barf(File::open(filename), "Could not open input file"));
+    let output = BufWriter::new(unwrap_or_barf(File::create(&output_filename), "Could not open output file"));
 
     // Change based on encoding
     if matches.opt_present("a") {
         // Read samples
-        println!("Reading Samples.");
-        let (samples, sample_rate) = unwrap_or_barf(read_samples_ahx(input), "Could not read samples from input.");
+        println!("Reading Samples");
+        let (samples, sample_rate) = unwrap_or_barf(read_samples_ahx(input), "Could not read samples from input");
 
         if sample_rate != 22050 {
-            barf("ahx encoding requires a sample rate of 22050.");
+            barf("ahx encoding requires a sample rate of 22050");
         }
 
         // Make encoder
-        let mut encoder = unwrap_or_barf(AhxEncoder::new(output), "Could not make encoder.");
+        let mut encoder = unwrap_or_barf(AhxEncoder::new(output), "Could not make encoder");
 
         // Encode data
-        println!("Encoding data.");
-        unwrap_or_barf(encoder.encode_data(samples), "Could not encode data.");
-        unwrap_or_barf(encoder.finalize(), "Could not finish writing adx file.");
+        println!("Encoding data");
+        unwrap_or_barf(encoder.encode_data(samples), "Could not encode data");
+        unwrap_or_barf(encoder.finalize(), "Could not finish writing adx file");
     }
     else {
         // Read samples
-        println!("Reading Samples.");
-        let (samples, sample_rate) = unwrap_or_barf(read_samples(input), "Could not read samples from input.");
+        println!("Reading Samples");
+        let (samples, sample_rate) = unwrap_or_barf(read_samples(input), "Could not read samples from input");
 
         // Make adx spec
         let spec = if matches.opt_present("n") {
@@ -115,12 +115,12 @@ fn main() {
         };
 
         // Make encoder from spec
-        let mut encoder = unwrap_or_barf(StandardEncoder::new(output, spec), "Could not make encoder.");
+        let mut encoder = unwrap_or_barf(StandardEncoder::new(output, spec), "Could not make encoder");
 
         // Encode data
-        println!("Encoding data.");
-        unwrap_or_barf(encoder.encode_data(samples), "Could not encode data.");
-        unwrap_or_barf(encoder.finish(), "Could not finish writing adx file.");
+        println!("Encoding data");
+        unwrap_or_barf(encoder.encode_data(samples), "Could not encode data");
+        unwrap_or_barf(encoder.finish(), "Could not finish writing adx file");
     }
 }
 

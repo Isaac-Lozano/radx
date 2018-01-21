@@ -58,11 +58,11 @@ fn main() {
         .and_then(|start_str| { start_str.parse::<u32>().ok() });
 
     // Open adx file and make reader/print header
-    let adx_file = BufReader::new(unwrap_or_barf(File::open(filename), "Could not open adx file."));
+    let adx_file = BufReader::new(unwrap_or_barf(File::open(filename), "Could not open adx file"));
 	if matches.opt_present("i") {
 		print_info(adx_file);
 	}
-    let mut adx = unwrap_or_barf(radx::from_reader(adx_file, loops_opt.is_some()), "Could not make adx reader.");
+    let mut adx = unwrap_or_barf(radx::from_reader(adx_file, loops_opt.is_some()), "Could not make adx reader");
 
     // Print adx info
     println!("ADX info:");
@@ -85,35 +85,35 @@ fn main() {
     };
 
     // Open wav writer
-    let wav_file = BufWriter::new(unwrap_or_barf(File::create(output_filename), "Could not open output file."));
-    let mut wav_writer = unwrap_or_barf(WavWriter::new(wav_file, spec), "Could not make wav writer.");
+    let wav_file = BufWriter::new(unwrap_or_barf(File::create(output_filename), "Could not open output file"));
+    let mut wav_writer = unwrap_or_barf(WavWriter::new(wav_file, spec), "Could not make wav writer");
 
     // Read depending on number of loops
-    println!("Decoding and writing wav.");
+    println!("Decoding and writing wav");
     if let Some(loops) = loops_opt {
         if let Some(loop_info) = adx.loop_info() {
             let samples_to_read = loop_info.start_sample + loops * (loop_info.end_sample - loop_info.start_sample);
             for _ in 0..samples_to_read {
                 let sample = adx.next_sample().unwrap();
                 for channel_sample in sample {
-                    unwrap_or_barf(wav_writer.write_sample(channel_sample), "Problem writing wav samples.");
+                    unwrap_or_barf(wav_writer.write_sample(channel_sample), "Problem writing wav samples");
                 }
             }
         }
         else {
-            barf("File is not a looping ADX. Do not use \"-l\".");
+            barf("File is not a looping ADX. Do not use \"-l\"");
         }
     }
     else {
         for sample in adx {
             for channel_sample in sample {
-                unwrap_or_barf(wav_writer.write_sample(channel_sample), "Problem writing wav samples.");
+                unwrap_or_barf(wav_writer.write_sample(channel_sample), "Problem writing wav samples");
             }
         }
     };
 
     // Finish writing to the wav
-    unwrap_or_barf(wav_writer.finalize(), "Could not finalize writing wav file.");
+    unwrap_or_barf(wav_writer.finalize(), "Could not finalize writing wav file");
 }
 
 fn barf(message: &str) -> ! {
@@ -140,7 +140,7 @@ fn help(prog_name: &str, opts: Options) -> ! {
 fn print_info<R>(reader: R) -> !
     where R: Read + Seek
 {
-    let header = unwrap_or_barf(AdxHeader::read_header(reader), "Could not read adx header.");
+    let header = unwrap_or_barf(AdxHeader::read_header(reader), "Could not read adx header");
 	println!("{:#?}", header);
 	process::exit(0);
 }
