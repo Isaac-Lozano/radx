@@ -3,6 +3,11 @@ radx
 
 An ADX encoder/decoder written in Rust.
 
+Download
+--------
+
+Download the latest version from the [releases page](https://github.com/Isaac-Lozano/radx/releases).
+
 Usage
 -----
 
