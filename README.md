@@ -3,6 +3,8 @@ radx
 
 An ADX encoder/decoder written in Rust.
 
+Written by OnVar.
+
 Download
 --------
 
