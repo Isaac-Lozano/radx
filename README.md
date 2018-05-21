@@ -3,8 +3,17 @@ radx
 
 An ADX encoder/decoder written in Rust.
 
-Usage
------
+General Usage
+-------------
+
+For most cases where all you want is to decode from adx to wav or encode from
+wav to adx, you can just drag the file onto radx and it'll do the conversion for
+you without the need to open up a command line. However, you cannot set custom
+loop points or specify ahx encoding (which is often used for voice lines)
+through the drag and drop interface.
+
+Advanced Usage
+--------------
 
 **radx_encode** takes a wav file and encodes it into an adx file.
 ```
