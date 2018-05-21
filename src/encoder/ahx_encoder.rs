@@ -384,10 +384,8 @@ impl<S> AhxEncoder<S>
             self.inner.write(1, 2)?;
         }
 
-        // Write scfsi info
-        for _ in 0..30 {
-            self.inner.write(0, 2)?;
-        }
+        // 1 scfsi per subband
+        let mut scfsi = [0; 30];
 
         // 3 parts with 30 subbands
         let mut scalefactors = [[0; 30]; 3];
@@ -411,7 +409,7 @@ impl<S> AhxEncoder<S>
                 }
             }
 
-            // Analize samples for scalefactors
+            // Analyze samples for scalefactors
             for sb in 0..30 {
                 let mut max_sample = 0;
                 for gr in 0..4 {
@@ -435,10 +433,59 @@ impl<S> AhxEncoder<S>
             }
         }
 
+        // Analyze scfsi info
+        for sb in 0..30 {
+            if scalefactors[0][sb] == scalefactors[1][sb] {
+                if scalefactors[1][sb] == scalefactors[2][sb] {
+                    // All scalefactors the same
+                    scfsi[sb] = 2;
+                }
+                else {
+                    // First two same, last different
+                    scfsi[sb] = 1;
+                }
+            }
+            else {
+                if scalefactors[1][sb] == scalefactors[2][sb] {
+                    // Last two same, first different
+                    scfsi[sb] = 3;
+                }
+                else {
+                    // None same
+                    scfsi[sb] = 0;
+                }
+            }
+        }
+
+        // Write scfsi information
+        for sb in 0..30 {
+            self.inner.write(scfsi[sb], 2)?;
+        }
+
         // Write scalefactor information
         for sb in 0..30 {
-            for part in 0..3 {
-                self.inner.write(scalefactors[part][sb] as u32, 6)?;
+            match scfsi[sb] {
+                0 => {
+                    // None the same, write all three scalefactors
+                    self.inner.write(scalefactors[0][sb] as u32, 6)?;
+                    self.inner.write(scalefactors[1][sb] as u32, 6)?;
+                    self.inner.write(scalefactors[2][sb] as u32, 6)?;
+                }
+                1 => {
+                    // First two same, last one different, write first and last
+                    self.inner.write(scalefactors[0][sb] as u32, 6)?;
+                    self.inner.write(scalefactors[2][sb] as u32, 6)?;
+                }
+                2 => {
+                    // All scalefactors the same, write the first
+                    self.inner.write(scalefactors[0][sb] as u32, 6)?;
+                }
+                3 => {
+                    // Last two the same, first one different, write first and last
+                    self.inner.write(scalefactors[0][sb] as u32, 6)?;
+                    self.inner.write(scalefactors[2][sb] as u32, 6)?;
+                }
+                _ => unreachable!(),
             }
         }
 

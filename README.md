@@ -3,6 +3,8 @@ radx
 
 An ADX encoder/decoder written in Rust.
 
+Written by OnVar.
+
 General Usage
 -------------
 
@@ -11,6 +13,11 @@ wav to adx, you can just drag the file onto radx and it'll do the conversion for
 you without the need to open up a command line. However, you cannot set custom
 loop points or specify ahx encoding (which is often used for voice lines)
 through the drag and drop interface.
+
+Download
+--------
+
+Download the latest version from the [releases page](https://github.com/Isaac-Lozano/radx/releases).
 
 Advanced Usage
 --------------
